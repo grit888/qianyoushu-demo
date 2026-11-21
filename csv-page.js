@@ -121,12 +121,12 @@
     const queued = selection.plan.reviewRows;
     if(!records.length&&!queued.length)return;
     try{
-      const source = selection.plan.source, month = records.map(r=>r.date.slice(0,7)).sort().at(-1);
+      const month = records.map(r=>r.date.slice(0,7)).sort().at(-1);
       const previous=app.capture(),next=app.capture();
       next.demo.data.push(...records);
       if (queued.length) next.importReviews = [...(next.importReviews || []),...queued];
       next.demo.audit.unshift({time:new Date().toLocaleTimeString('zh-CN',{hour12:false}),text:'本机账单导入 '+records.length+' 笔，待核对 '+queued.length+' 笔 · '+selection.plan.source});
-      app.restore(next,selection.signature);invalidate();undo={payload:previous,signature:app.signature()};$('csv-undo').hidden=false;$('review-import').hidden=!records.length;$('review-import').onclick=()=>root.QYSReviewUI?.selectImport(source,month);
+      app.restore(next,selection.signature);invalidate();undo={payload:previous,signature:app.signature()};$('csv-undo').hidden=false;$('review-import').hidden=!records.length;$('review-import').onclick=()=>root.QYSReviewUI?.selectImport(records[0],month);
       root.QYSDataUI?.refresh();root.QYSImportReviewUI?.refresh();
       if (queued.length) $('csv-queue').open=true;
       status('已入账 '+records.length+' 笔'+(queued.length?'，另有 '+queued.length+' 笔待核对':'')+'。当前页面会话可撤销一次。');

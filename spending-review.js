@@ -1,34 +1,14 @@
 (function(root) {
   'use strict';
-  function report(rows, month, reimbursements = new Map()) {
-    const scoped = rows.filter(r => r.date.slice(0,7) === month);
-    const totals = new Map(), merchants = new Map();
-    let spent = 0, gross = 0, reimbursed = 0, count = 0;
-    for (const r of scoped) {
-      if (r.kind !== 'expense' || r.category === '转账' || r.id.startsWith('SIM-')) continue;
-      const returned = reimbursements.get(r.id) || 0;
-      const net = r.cents - returned;
-      gross += r.cents;
-      reimbursed += returned;
-      spent += net;
-      count++;
-      if (net === 0) continue;
-      totals.set(r.category,(totals.get(r.category) || 0) + net);
-      merchants.set(r.merchant,(merchants.get(r.merchant) || 0) + net);
-    }
-    const rank = map => [...map].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0],'zh'));
-    const dates = scoped.map(r => r.date).sort();
-    return {spent,gross,reimbursed,count,categories:rank(totals),merchants:rank(merchants),first:dates[0],last:dates.at(-1)};
-  }
   function plan(funds, typical, target) {
     return {ceiling:funds-target, remaining:funds-typical, gap:funds-typical-target};
   }
-  root.QYSSpending = Object.freeze({report,plan});
+  const consumption = root.QYSConsumption;
+  root.QYSSpending = Object.freeze({report:consumption.report,plan});
   if (typeof document === 'undefined') return;
   const $ = id => document.getElementById(id);
   const money = c => '¥'+(c/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  let pendingSource = null, pendingMonth = null, current, lastMonth;
-  const sourceKey = row => row.source ? 'file:'+row.source.name : 'sample';
+  let pendingSource = null, pendingMonth = null, current, lastMonth, chosenScope;
   function fill(select, pairs, wanted) {
     select.replaceChildren();
     for (const [key,label] of pairs) {
@@ -82,14 +62,11 @@
       $('review-status').textContent='账本处于保护状态。';return;
     }
     $('review-content').hidden=false;
-    const snapshot = app.capture(), all = snapshot.demo.data, sources = new Map();
-    const pending = root.QYSImportReview.pending(snapshot.importReviews);
-    for (const item of pending) sources.set('file:'+item.source,item.source);
-    for (const row of all) sources.set(sourceKey(row),row.source?.name || '演示账本');
-    fill($('review-source'),[...sources],pendingSource || $('review-source').value);
-    const rows=all.filter(r=>sourceKey(r)===$('review-source').value);
-    const pendingForSource = pending.filter(item=>'file:'+item.source===$('review-source').value);
-    const months = [...new Set([...rows,...pendingForSource].filter(row=>row.date).map(row=>row.date.slice(0,7)))].sort().reverse();
+    const snapshot = app.capture(), options = consumption.scopes(snapshot);
+    if (pendingSource) chosenScope = pendingSource;
+    fill($('review-source'),options,chosenScope);
+    const {rows,pending} = consumption.selectScope(snapshot,$('review-source').value);
+    const months = consumption.months(rows,pending);
     fill($('review-month'),months.map(m=>[m,m]),pendingMonth || $('review-month').value);
     const month = $('review-month').value;
     if (lastMonth !== undefined && lastMonth !== month) {
@@ -97,16 +74,11 @@
     }
     lastMonth = month;
     pendingSource=null;pendingMonth=null;
-    const entries = snapshot.transferPurposes || [];
-    const repayments = root.QYSTransferPurpose.amountsByExpense(entries);
-    const refunds = root.QYSImportReview.refundOffsets(snapshot.importReviews);
-    for (const [id,cents] of refunds) repayments.set(id,(repayments.get(id) || 0)+cents);
-    current = report(rows, month, repayments);
-    root.QYSTransferPurposeUI.refresh(snapshot, rows.filter(row => row.date.startsWith(month)));
-    $('review-status').textContent=current.first ? '记录范围 '+current.first+' 至 '+current.last+'。仅统计所选来源已记录的消费。' : '这个来源还没有记录。';
-    const awaiting = pendingForSource.length;
-    $('review-queue-link').hidden = !awaiting;
-    $('review-queue-link').textContent = '同一来源另有 '+awaiting+' 笔待核对，暂未计入 · 前往核对';
+    current = consumption.report(rows,month,consumption.offsets(snapshot));
+    root.QYSTransferPurposeUI.refresh(snapshot,rows.filter(row=>row.date.startsWith(month)));
+    $('review-status').textContent=current.first ? '记录范围 '+current.first+' 至 '+current.last+'。' : '这个范围没有本月账单。';
+    $('review-queue-link').hidden = !pending.length;
+    $('review-queue-link').textContent = '所选账单有 '+pending.length+' 笔待核对，暂未计入 · 前往核对';
     $('review-total').textContent=money(current.spent)+' · '+current.count+' 笔';
     const breakdown = $('review-repayment-totals');
     breakdown.hidden = !current.reimbursed;
@@ -124,14 +96,14 @@
     fill(keep,[['','暂未指定'], ...current.categories.filter(([name])=>name!=='未分类').map(([name])=>[name,name])],keep.value);
     drawPlan();
   }
-  $('review-source').onchange=refresh;
+  $('review-source').onchange=()=>{chosenScope=$('review-source').value;refresh();};
   $('review-month').onchange=refresh;
   $('review-keep').onchange=drawPlan;
   for(const id of ['review-funds','review-typical','review-goal']) $(id).oninput=drawPlan;
   root.QYSReviewUI=Object.freeze({refresh,
-    selectImport(name,month){pendingSource='file:'+name;pendingMonth=month;},
+    selectImport(row,month){pendingSource=consumption.sourceKey(row);pendingMonth=month;},
     selectTransfer(row) {
-      pendingSource = sourceKey(row);
+      pendingSource = $('review-source').value === 'imports' ? 'imports' : consumption.sourceKey(row);
       pendingMonth = row.date.slice(0,7);
       refresh();
       root.QYSTransferPurposeUI.open(row.id);

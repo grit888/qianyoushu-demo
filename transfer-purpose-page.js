@@ -55,7 +55,7 @@
     caps = new Map();
     const options = [];
     for (const row of rows.values()) {
-      if (!model.canLink(transfer, row)) continue;
+      if (!model.canLink(transfer, row) || !root.QYSConsumption.sameLedgerKind(transfer,row)) continue;
       const limit = Math.min(transfer.cents, row.cents - (other.get(row.id) || 0));
       if (limit <= 0) continue;
       caps.set(row.id, limit);
@@ -85,6 +85,7 @@
     for (const entry of entries) {
       if (entry.purpose !== 'reimbursement' || !ids.has(entry.expenseId)) continue;
       const original = rows.get(entry.expenseId), transfer = rows.get(entry.transferId);
+      if (!root.QYSConsumption.sameLedgerKind(transfer,original)) continue;
       const item = document.createElement('li');
       const text = document.createElement('span'), edit = document.createElement('button');
       text.textContent = original.date+' · '+original.merchant+' · 原消费 '+money(original.cents)
