@@ -48,9 +48,11 @@
   function report(rows, month, offsets = new Map()) {
     const scoped = rows.filter(r => r.date.slice(0,7) === month);
     const byCategory = new Map(), merchants = new Map();
-    let spent = 0, gross = 0, reimbursed = 0, count = 0;
+    let income = 0, spent = 0, gross = 0, reimbursed = 0, count = 0;
     for (const r of scoped) {
-      if (r.kind !== 'expense' || r.category === '转账' || r.id.startsWith('SIM-')) continue;
+      if (r.id.startsWith('SIM-') || r.category === '转账') continue;
+      if (r.kind === 'income') { income += r.cents; continue; }
+      if (r.kind !== 'expense') continue;
       const returned = offsets.get(r.id) || 0;
       const net = r.cents - returned;
       gross += r.cents;
@@ -67,8 +69,9 @@
     }
     const rank = map => [...map].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0],'zh'));
     const dates = scoped.map(r => r.date).sort();
-    return {spent,gross,reimbursed,count,byCategory,categories:rank([...byCategory].filter(([,value])=>value.net>0).map(([key,value])=>[key,value.net])),merchants:rank(merchants),first:dates[0],last:dates.at(-1)};
+    return {income,spent,gross,reimbursed,count,byCategory,categories:rank([...byCategory].filter(([,value])=>value.net>0).map(([key,value])=>[key,value.net])),merchants:rank(merchants),first:dates[0],last:dates.at(-1)};
   }
 
   root.QYSConsumption = Object.freeze({sourceKey,sameLedgerKind,scopes,selectScope,months,offsets,report});
 })(globalThis);
+

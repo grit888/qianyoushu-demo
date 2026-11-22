@@ -15,7 +15,7 @@
     return JSON.parse(JSON.stringify(task));
   }
   function normalize(payload){
-    keys(payload,['demo','task','feedback','recurring','budgets','transferPurposes','importReviews']);
+    keys(payload,['demo','task','feedback','recurring','budgets','transferPurposes','importReviews','monthlyClose']);
     const demo=payload.demo;
     keys(demo,['data','subs','audit','daily','serial']);
     root.QYSDemoCore.validateState(demo);
@@ -46,16 +46,22 @@
     }
     if(payload.transferPurposes!==undefined)result.transferPurposes=root.QYSTransferPurpose.normalize(demo.data,payload.transferPurposes);
     if(payload.importReviews!==undefined)result.importReviews=root.QYSImportReview.normalize({...result,importReviews:payload.importReviews});
+    if(payload.monthlyClose!==undefined){
+      const m=payload.monthlyClose;
+      if(!m||typeof m.scope!=='string'||!m.scope.trim()||m.scope.length>100||typeof m.month!=='string'||!/^20\d{2}-(0[1-9]|1[0-2])$/.test(m.month)||![m.openingCents,m.actualCents].every(v=>v===null||v===undefined||Number.isSafeInteger(v)&&v>=0))invalid();
+      result.monthlyClose={scope:m.scope,month:m.month,openingCents:m.openingCents??null,actualCents:m.actualCents??null};
+    }
     return result;
   }
-  function documentFor(payload){return {format:'qianyoushu-demo',version:payload.importReviews!==undefined?6:payload.transferPurposes!==undefined?5:payload.budgets!==undefined?4:payload.recurring!==undefined?3:payload.demo.data.some(r=>r.id.startsWith('CSV-'))?2:1,exportedAt:new Date().toISOString(),payload:normalize(payload)};}
+  function documentFor(payload){return {format:'qianyoushu-demo',version:payload.monthlyClose!==undefined?7:payload.importReviews!==undefined?6:payload.transferPurposes!==undefined?5:payload.budgets!==undefined?4:payload.recurring!==undefined?3:payload.demo.data.some(r=>r.id.startsWith('CSV-'))?2:1,exportedAt:new Date().toISOString(),payload:normalize(payload)};}
   function encode(doc){const text=JSON.stringify(doc,null,2);if(new TextEncoder().encode(text).length>MAX_BYTES)throw Error('备份超过 2 MB，请减少操作记录后重试。');return text;}
   function parseDocument(text,internal=false){
     if(typeof text!=='string'||text.length>MAX_BYTES||new TextEncoder().encode(text).length>MAX_BYTES)throw Error('文件超过 2 MB，未读取或修改本机数据。');
     let doc;try{doc=JSON.parse(text)}catch{invalid()}
     keys(doc,['format','version','exportedAt','payload']);
-    if(doc.format!=='qianyoushu-demo'||![1,2,3,4,5,6].includes(doc.version)||typeof doc.exportedAt!=='string'||!Number.isFinite(Date.parse(doc.exportedAt)))invalid();
+    if(doc.format!=='qianyoushu-demo'||![1,2,3,4,5,6,7].includes(doc.version)||typeof doc.exportedAt!=='string'||!Number.isFinite(Date.parse(doc.exportedAt)))invalid();
     let payload;try{payload=normalize(doc.payload)}catch{invalid()}
+    if(doc.version<7&&payload.monthlyClose!==undefined)invalid();
     if(doc.version<6&&payload.importReviews!==undefined)invalid();
     if(doc.version<5&&payload.transferPurposes!==undefined)invalid();
     if(doc.version<4&&payload.budgets!==undefined)invalid();
@@ -72,6 +78,7 @@
     if(payload.budgets!==undefined)clean.budgets=payload.budgets;
     if(payload.transferPurposes!==undefined)clean.transferPurposes=payload.transferPurposes;
     if(payload.importReviews!==undefined)clean.importReviews=payload.importReviews;
+    if(payload.monthlyClose!==undefined)clean.monthlyClose=payload.monthlyClose;
     return encode(documentFor(clean));
   }
   function load(storage){
@@ -115,3 +122,4 @@
   }
   root.QYSBackup=Object.freeze({KEY,MAX_BYTES,exportText,parse:text=>parseDocument(text),load,commit,summary,normalize,compareRecords});
 })(globalThis);
+

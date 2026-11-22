@@ -15,7 +15,7 @@
       ['消费合计', money(s.consumption)], ['转账流入', money(s.transferIn)],
       ['转账流出', money(s.transferOut)], ['订阅', s.active + ' 项有效 / 共 ' + s.subscriptions + ' 项'],
       ['周期计划', s.plans + ' 项'], ['分类预算', s.budgets + ' 项'],
-      [purposeLabel, s.transferPurposes + ' 条'], ['导入待核对',s.importReviews+' 条'], ['异常标注', s.feedback + ' 条'], ['已完成组合任务', s.tasks + ' 个'],
+      [purposeLabel, s.transferPurposes + ' 条'], ['导入待核对',s.importReviews+' 条'], ['月结', payload.monthlyClose ? payload.monthlyClose.month : '未保存'], ['异常标注', s.feedback + ' 条'], ['已完成组合任务', s.tasks + ' 个'],
       ['操作记录', s.audit + ' 条'], ['记录日期', s.start + ' 至 ' + s.end]
     ];
   }
@@ -80,7 +80,7 @@
       preview={payload,signature};drawComparison(app.capture(),payload);
       $('import-preview').hidden=false;$('import-ack').checked=false;$('import-confirm').disabled=true;
       status('校验通过，尚未导入。请核对下方数据与整体替换范围。');$('import-preview').focus();
-    }catch{if(current!==ticket)return;clearPreview();status('读取或校验失败。请选择钱有数导出的版本 1 至 6 的完整 JSON 备份。');}
+    }catch{if(current!==ticket)return;clearPreview();status('读取或校验失败。请选择钱有数导出的版本 1 至 7 的完整 JSON 备份。');}
   };
   $('import-ack').onchange=()=>{$('import-confirm').disabled=!preview||!$('import-ack').checked;};
   $('import-cancel').onclick=()=>{clearPreview();status('已取消导入，本机数据未修改。');};
@@ -102,3 +102,4 @@
   root.addEventListener('storage',event=>{if(event.key!==null&&event.key!==backup.KEY)return;clearPreview();undo=null;$('import-undo').hidden=true;status('其他标签页的数据已变化。请刷新本页后再备份或恢复。');});
   root.QYSDataUI=Object.freeze({refresh});refresh();
 })(window);
+
