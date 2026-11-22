@@ -102,7 +102,7 @@ $('month').value='2026-09';$('category').value='';$('direction').value='expense'
 }
 $('ask-form').onsubmit=e=>{e.preventDefault();const text=$('question').value.trim();if(text){ask(text);$('question').value=''}};document.querySelectorAll('[data-prompt]').forEach(b=>b.onclick=()=>ask(b.dataset.prompt));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>switchView(b.dataset.view));['month','category','direction'].forEach(id=>$(id).onchange=renderLedger);$('proof-toggle').onclick=()=>{$('proof').hidden=!$('proof').hidden;$('proof-toggle').setAttribute('aria-expanded',String(!$('proof').hidden))};$('task-start').onclick=advanceTask;$('task-reset').onclick=()=>{taskState=null;renderTask();saveTask()};$('reset').onclick=()=>{if(confirm('重置会清空本机演示数据、任务和操作记录。继续吗？'))reset(true)};reset();
 
-function setDemoLocked(locked){for(const id of ['ledger-view','subscriptions-view','forecast-view','anomalies-view','task-view'])$(id).inert=locked;}
+function setDemoLocked(locked){for(const id of ['ledger-view','subscriptions-view','forecast-view','anomalies-view','task-view','monthly-close-view'])$(id).inert=locked;}
 $('cache-download').onclick=()=>{if(corruptRaw===null)return;const blob=new Blob([corruptRaw],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='qianyoushu-damaged-cache.txt';link.click();URL.revokeObjectURL(url)};
 $('cache-reset').onclick=()=>{if(confirm('原始缓存将被替换。建议先下载原始缓存。确认重新开始演示？'))reset(true)};
 $('scenario-month').onchange=renderForecast;

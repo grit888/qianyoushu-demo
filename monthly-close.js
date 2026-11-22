@@ -15,6 +15,7 @@
     const categories=Array.isArray(input.categories)?input.categories.map(([name,value])=>{if(typeof name!=='string'||!name.trim()||!Number.isSafeInteger(value)||value<0)throw Error('分类汇总无效。');return[name,value]}):[];
     return{month:input.month,scope:input.scope,income,grossExpense,offsets,netExpense,pending,categories,coverage:input.coverage||{first:'',last:''},openingBalance,actualBalance,theoreticalBalance,difference,budgetDifference:cents(input.budgetDifference),status};
   }
-  root.QYSMonthlyClose=Object.freeze({calculate});
+  function budgetDifference(budgets){return (budgets||[]).reduce((sum,b)=>sum+(b.cents-(b.actual||0)),0)}
+  root.QYSMonthlyClose=Object.freeze({calculate,budgetDifference});
 })(globalThis);
 
