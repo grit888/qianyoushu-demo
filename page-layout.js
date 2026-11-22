@@ -1,6 +1,6 @@
 (function (root) {
   'use strict';
-  const titles = {ledger:'账单与对话', subscriptions:'订阅与代扣', forecast:'收支情景估算', anomalies:'异常候选', task:'组合任务', activity:'操作记录', cloud:'我的云端账单', data:'数据管理', classify:'批量分类',budget:'分类预算',review:'消费复盘','monthly-close':'月结核对'};
+  const titles = {ledger:'账单与对话', subscriptions:'订阅与代扣', forecast:'收支情景估算', anomalies:'异常候选', task:'组合任务', activity:'操作记录', cloud:'我的云端账单', data:'数据管理', classify:'批量分类',budget:'分类预算',review:'消费复盘','monthly-close':'月结核对','model-settings':'模型配置'};
   const dataPanels = {
     import: 'csv-section',
     reconcile: 'data-panel-reconcile',
