@@ -10,7 +10,16 @@
   function draw(state){const r=state.report,budgetDifference=root.QYSMonthlyClose.budgetDifference(state.budgets);$('monthly-close-summary').innerHTML='';for(const [label,value] of [['收入',money(r.income)],['原始消费',money(r.gross)],['已确认退款/回款',money(r.reimbursed)],['实际承担消费',money(r.spent)],['待核对',state.pending+' 笔'],['覆盖日期',(r.first||'无')+' 至 '+(r.last||'无')],['预算差额',state.budgets.length?money(budgetDifference):'未设置']]){const dl=document.createElement('div'),s=document.createElement('span'),b=document.createElement('strong');s.textContent=label;b.textContent=value;dl.append(s,b);$('monthly-close-summary').append(dl)}$('monthly-close-status').textContent='填写期初和期末余额后保存月结。当前只统计所选账单范围。'}
   $('monthly-scope').onchange=()=>{scope=$('monthly-scope').value;refresh()};$('monthly-month').onchange=()=>{month=$('monthly-month').value;refresh()};
   $('monthly-save').onclick=()=>{try{const state=current(),next=app.capture(),opening=parseMoney($('monthly-opening').value),actual=parseMoney($('monthly-actual').value);next.monthlyClose={scope,month,openingCents:opening,actualCents:actual};next.demo.audit.unshift({time:new Date().toLocaleTimeString('zh-CN',{hour12:false}),text:'保存月结 '+month});app.restore(next,app.signature());$('monthly-close-status').textContent=actual===null||opening===null?'月结已保存，等待填写余额。':'月结已保存，差额可在上方汇总核对。';refresh()}catch(e){$('monthly-close-status').textContent=e.message}};
-  $('monthly-explain').onclick=()=>{const state=current(),input={month,scope,income:state.report.income,grossExpense:state.report.gross,offsets:state.report.reimbursed,pending:state.pending,categories:state.report.categories,coverage:{first:state.report.first,last:state.report.last},openingBalance:parseMoney($('monthly-opening').value),actualBalance:parseMoney($('monthly-actual').value),budgetDifference:root.QYSMonthlyClose.budgetDifference(state.budgets)};const close=model.calculate(input);root.QYSAISummary.request(close).then(result=>{$('monthly-explain-result').hidden=false;$('monthly-explain-result').textContent=result.text+(result.source==='rules'?' 当前使用本机规则摘要，尚未调用外部模型。':'')})};
+  $('monthly-explain').onclick=()=>{const state=current(),input={month,scope,income:state.report.income,grossExpense:state.report.gross,offsets:state.report.reimbursed,pending:state.pending,categories:state.report.categories,coverage:{first:state.report.first,last:state.report.last},openingBalance:parseMoney($('monthly-opening').value),actualBalance:parseMoney($('monthly-actual').value),budgetDifference:root.QYSMonthlyClose.budgetDifference(state.budgets)};const close=model.calculate(input);
+    const cfg=root.QYSModelConfig?.load(window.localStorage);
+    const transport=cfg?async summary=>{
+      const request=root.QYSModelConfig.testRequest(cfg);
+      request.body={model:cfg.model,messages:[{role:'system',content:'你是个人财务月报助手，只解释汇总，不重新计算金额，不给投资建议。'},{role:'user',content:JSON.stringify(summary)}],max_tokens:500};
+      const response=await fetch(request.url,{method:'POST',headers:request.headers,body:JSON.stringify(request.body),redirect:'error'});
+      let json=null;try{json=await response.json()}catch{}
+      return{status:response.status,json,text:json?.choices?.[0]?.message?.content};
+    }:undefined;
+    root.QYSAISummary.request(close,transport).then(result=>{$('monthly-explain-result').hidden=false;$('monthly-explain-result').textContent=result.text+(result.source==='rules'?' 当前使用本机规则摘要，尚未调用外部模型。':' 已使用本机模型配置。')})};
   root.QYSMonthlyCloseUI=Object.freeze({refresh});
   refresh();
 })(globalThis);
